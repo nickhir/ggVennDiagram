@@ -105,6 +105,46 @@ ggVennDiagram <- function(x, category.names=names(x),
 }
 
 
+#' Plot interactive venn diagram
+#'
+#' @param l list with the different elements.
+#' @param linewidth linewidth for the different sections of the diagram
+#' @param linecolor color for the lines of the diagram
+#' @param labelsize size of the labels (i.e. A or Ctrl)
+#' @param countsize size of the labels inside the sections of the venn diagram
+#' @param return_plotly Should the plotly diagram be returned or the ggplot?
+#'
+#' @return
+#' @export
+#'
+#' @examples
+interactive_venn <- function(l, linewidth=0.1, linecolor="black", labelsize=8, countsize=4, return_plotly=T){
+  venn <- Venn(l)
+  data <- process_data(venn)
+
+  items = data@region %>% dplyr::rowwise() %>% dplyr::mutate(text = stringr::str_wrap(paste0(item, collapse = " | ")),30) %>% sf::st_as_sf()
+  label_coord = sf::st_centroid(items$geometry) %>% sf::st_coordinates()
+
+
+
+  p <- ggplot() +
+    geom_sf(aes(fill=count), data = venn_region(data)) +
+    geom_sf(size = linewidth , color = linecolor, data = venn_setedge(data), show.legend = F) +
+    geom_sf_text(aes(label = name), size=labelsize, data = venn_setlabel(data), show.legend = F) +
+    geom_text(aes_string(label = "count", text = "text"),size=countsize,
+              x = label_coord[, 1], y = label_coord[, 2],
+              show.legend = FALSE, data=items)+
+    scale_fill_gradient(high="darkred",low="grey")+
+    theme_void()
+
+  if (return_plotly){
+    p <- plotly::ggplotly(p, tooltip = "text") %>% plotly::layout(xaxis = list(showline = FALSE),
+                                                                  yaxis = list(showline = FALSE))
+  }
+  return(p)
+}
+
+
 
 
 #' plot codes
@@ -135,8 +175,8 @@ plot_venn <- function(x,
 
   region.params <- list(data = data@region, mapping = aes_string(fill = 'count'))
 
-  edge.params <- list(data = data@setEdge, 
-                      mapping = aes_string(color = 'id'), 
+  edge.params <- list(data = data@setEdge,
+                      mapping = aes_string(color = 'id'),
                       show.legend = FALSE)
 
   if (utils::packageVersion('ggplot2') >= '3.4.0'){
@@ -147,14 +187,14 @@ plot_venn <- function(x,
     edge.params$size <- edge_size
   }
 
-  text.params <- list(data = data@setLabel, 
+  text.params <- list(data = data@setLabel,
                       mapping = aes_string(label = 'name'),
                       size = set_size,
                       color = set_color
                  )
 
   region.layer <- do.call('geom_sf', region.params)
-  
+
   edge.layer <- do.call('geom_sf', edge.params)
 
   text.layer <- do.call('geom_sf_text', text.params)
