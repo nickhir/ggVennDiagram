@@ -26,6 +26,31 @@ setMethod("process_data", signature = c("Venn"),
           })
 
 
+
+
+
+#' Function to generate a dataframe with the names of the items that make up the different sections
+#'
+#' @param l a list (same you use to generate a venn diagram)
+#' @param sep the seperator
+#'
+#' @return df
+#' @export
+#'
+#' @examples
+get_section_df <- function(l, sep=","){
+  x<-process_region_data(Venn(l)) %>%
+    dplyr::select(name, item) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(genes = paste0(item, collapse = ", ")) %>%
+    dplyr::select(group=name,
+           genes) %>%
+    data.frame()
+  return(x)
+}
+
+
+
 #' Get VennPlotData slot
 #'
 #' @param obj a S4 class `VennPlotData` object
